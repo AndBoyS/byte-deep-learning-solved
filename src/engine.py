@@ -89,13 +89,13 @@ class Trainer:
         # Запись логов
         self.writer.add_scalar(
             "loss", 
-            ..., 
+            loss.item(), 
             global_step=self.global_step,
         )
         
         self.writer.add_scalar(
             "lr", 
-            ..., 
+            self.optimizer.param_groups[0]["lr"], 
             global_step=self.global_step,
         )
         
@@ -118,16 +118,22 @@ class Trainer:
             
         self.writer.add_scalar(
             "val_loss", 
-            ..., 
+            val_loss, 
             global_step=self.global_step,
         )
 
     def save_checkpoint(self, path: Union[str, Path]) -> None:
-        ...
+        pass
 
     def compute_loss_on_batch(self, batch) -> torch.Tensor:
         # Считает лосс и метрики
-        ...
+        x, y = batch
+        x = x.to(self.device)
+        y = y.to(self.device)
+        
+        logits = self.model.forward(x)
+
+        return self.criterion(logits, y)
     
 
 def evaluate_loader(loader: DataLoader, model: torch.nn.Module) -> Dict[str, float]:
@@ -135,9 +141,28 @@ def evaluate_loader(loader: DataLoader, model: torch.nn.Module) -> Dict[str, flo
     with torch.no_grad():
         model.eval()
         
-        # <YOUR CODE>
+        accs_batches = []
+        preds_batches = []
+        targets_batches = []
+        
+        for batch in tqdm(loader, desc='Computing metrics'):
+            
+            logits = model(batch[0])
+            target = batch[1]
+            
+            pred = logits.argmax(dim=1)
+            targets_batches.append(target.numpy())
+            
+            preds_batches.append(pred.detach().cpu().numpy())
+            
+            acc = (pred == target).float().mean().item()
+            
+            accs_batches.append(acc)
+        
+        targets = np.concatenate(targets_batches)
+        preds = np.concatenate(preds_batches)
         
         return {
-            'acc': ...,
-            'f1': ...,
+            'acc': np.mean(accs_batches),
+            'f1': f1_score(targets, preds, average='macro')
         }

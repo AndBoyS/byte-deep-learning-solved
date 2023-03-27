@@ -130,3 +130,4 @@ dmypy.json
 .DS_Store
 data/
 events.out.tfevents.*
+lightning_logs
